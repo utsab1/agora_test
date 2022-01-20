@@ -39,7 +39,6 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> initAgora() async {
-    debugger();
     // retrieve permissions
     await [Permission.microphone].request();
 
@@ -91,8 +90,9 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Agora Video Call'),
+        title: const Text('Agora Voice Call'),
       ),
       body: Stack(
         children: [
@@ -126,35 +126,14 @@ class _MyAppState extends State<MyApp> {
         ),
         itemCount: _users.length,
         itemBuilder: (gc, index) {
-          return Column(
+          return Wrap(
             children: [
               Container(
-                color: Colors.blue,
-                height: 50,
-                width: 50,
-                margin: EdgeInsets.all(20.0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10.0),
-                  image: DecorationImage(
-                    image: AssetImage("assets/images/profile.png"),
-                    fit: BoxFit.cover,
-                  ),
+                child: Image.asset(
+                  "assets/images/profile.png",
+                  fit: BoxFit.contain,
                 ),
               ),
-              SizedBox(height: 10),
-              // Row(
-              //   mainAxisAlignment: MainAxisAlignment.center,
-              //   children: [
-              //     Text(
-              //       _users..name.split(' ')[0],
-              //       overflow: TextOverflow.ellipsis,
-              //       textAlign: TextAlign.center,
-              //       style: TextStyle(
-              //         fontWeight: FontWeight.bold,
-              //       ),
-              //     ),
-              //   ],
-              // ),
             ],
           );
         },
