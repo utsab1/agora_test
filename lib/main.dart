@@ -1,5 +1,8 @@
 import 'dart:async';
-import 'dart:developer';
+import 'dart:ui';
+import 'package:agora_flutter_quickstart/model/users.dart';
+import 'package:avatar_glow/avatar_glow.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -11,7 +14,7 @@ import 'package:agora_rtc_engine/rtc_engine.dart';
 const appId =
     "955c5df0b5ad45e5a3fa1edb81962e1d"; //given id is appid which is available in agora dashboard/console
 const token =
-    "006955c5df0b5ad45e5a3fa1edb81962e1dIADVwyWpjl8eC+V7qOgagQIygCzSrhOoSmChATNMx9mlWJU2fRgAAAAAIgDC8VeAwHbpYQQAAQDAdulhAgDAdulhAwDAdulhBADAdulh"; //given id is token  which can be generated  from agora dashboard/console
+    "006955c5df0b5ad45e5a3fa1edb81962e1dIABazMSO57b0hw8JDeXXvH+3+/xGcwRBcEpMvysmTnsAZZU2fRgAAAAAIgBLPQ3J6r7uYQQAAQDqvu5hAgDqvu5hAwDqvu5hBADqvu5h006955c5df0b5ad45e5a3fa1edb81962e1dIABazMSO57b0hw8JDeXXvH+3+/xGcwRBcEpMvysmTnsAZZU2fRgAAAAAIgBLPQ3J6r7uYQQAAQDqvu5hAgDqvu5hAwDqvu5hBADqvu5h006955c5df0b5ad45e5a3fa1edb81962e1dIABazMSO57b0hw8JDeXXvH+3+/xGcwRBcEpMvysmTnsAZZU2fRgAAAAAIgBLPQ3J6r7uYQQAAQDqvu5hAgDqvu5hAwDqvu5hBADqvu5h006955c5df0b5ad45e5a3fa1edb81962e1dIABazMSO57b0hw8JDeXXvH+3+/xGcwRBcEpMvysmTnsAZZU2fRgAAAAAIgBLPQ3J6r7uYQQAAQDqvu5hAgDqvu5hAwDqvu5hBADqvu5h"; //given id is token  which can be generated  from agora dashboard/console
 void main() => runApp(MaterialApp(home: MyApp()));
 
 class MyApp extends StatefulWidget {
@@ -21,10 +24,11 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   static final _users = <int>[];
+  Map<int, User> _userMap = new Map<int, User>();
   final _infoStrings = <String>[];
 
   int? _remoteUid;
-  bool muted = false;
+  bool muted = true;
   bool _localUserJoined = false;
 //Initialize rtc engine for video call p2p
   late RtcEngine _engine;
@@ -38,25 +42,45 @@ class _MyAppState extends State<MyApp> {
     initAgora();
   }
 
+  Future<void> _handleMic(Permission permission) async {
+    final status = await permission.request();
+    print(status);
+  }
+
   Future<void> initAgora() async {
     // retrieve permissions
-    await [Permission.microphone].request();
 
     //create the engine
     _engine = await RtcEngine.create(appId);
+    await _engine.setDefaultAudioRoutetoSpeakerphone(true);
     await _engine.enableAudio();
+    // Enables the audioVolumeIndication
+    await _engine.enableAudioVolumeIndication(250, 3, true);
     _engine.setEventHandler(
       RtcEngineEventHandler(
           joinChannelSuccess: (String channel, int uid, int elapsed) {
         print("local user $uid joined");
         setState(() {
           _localUserJoined = true;
+          _remoteUid = uid;
+
+          _userMap.addAll({
+            uid: User(
+              uid,
+              false,
+            )
+          });
         });
       }, userJoined: (int uid, int elapsed) {
         print("remote user $uid joined");
         setState(() {
-          _remoteUid = uid;
-          _users.add(_remoteUid!);
+          _userMap.addAll({
+            uid: User(
+              uid,
+              false,
+            )
+          });
+          // _users.add(_remoteUid!);
         });
       }, userOffline: (int uid, UserOfflineReason reason) {
         print("remote user $uid left channel");
@@ -73,13 +97,43 @@ class _MyAppState extends State<MyApp> {
       }, userMuteAudio: (uid, muted) {
         print("remote user $uid left channel");
         setState(() {
-          muted = true;
+          muted = false;
         });
+      }, microphoneEnabled: (enabled) {
+        _engine.setEnableSpeakerphone(false);
       },
 
           /// Detecting active speaker by using audioVolumeIndication callback
           audioVolumeIndication: (volumeInfo, v) {
-        //core logic will be here
+        volumeInfo.forEach((speaker) {
+          //detecting speaking person whose volume more than 5
+          if (speaker.volume > 5) {
+            try {
+              _userMap.forEach((key, value) {
+                //Highlighting local user
+                //In this callback, the local user is represented by an uid of 0.
+                if ((_remoteUid?.compareTo(key) == 0) && (speaker.uid == 0)) {
+                  setState(() {
+                    _userMap.update(key, (value) => User(key, true));
+                  });
+                }
+
+                //Highlighting remote user
+                else if (key.compareTo(speaker.uid) == 0) {
+                  setState(() {
+                    _userMap.update(key, (value) => User(key, true));
+                  });
+                } else {
+                  setState(() {
+                    _userMap.update(key, (value) => User(key, false));
+                  });
+                }
+              });
+            } catch (error) {
+              print('Error:${error.toString()}');
+            }
+          }
+        });
       }),
     );
 
@@ -90,60 +144,150 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xff1F1F1F),
       appBar: AppBar(
-        title: const Text('Agora Voice Call'),
+        title: const Text('Audio Room'),
+        titleTextStyle:
+            TextStyle(height: 1.5, fontWeight: FontWeight.w700, fontSize: 20.0),
+        backgroundColor: Color(0xff323232),
       ),
       body: Stack(
         children: [
-          Center(
-              child:
-                  // RtcLocalView.SurfaceView(
-                  //     mirrorMode: VideoMirrorMode.Enabled,
-                  //   )
-                  CircleAvatar(
-            radius: 30.0,
-            backgroundImage: AssetImage("assets/images/profile.png"),
-            backgroundColor: Colors.transparent,
-          )),
-          _remoteVideo(),
+          // Center(
+          //     child:
+          //         // RtcLocalView.SurfaceView(
+          //         //     mirrorMode: VideoMirrorMode.Enabled,
+          //         //   )
+          //         CircleAvatar(
+          //   radius: 30.0,
+          //   backgroundImage: AssetImage("assets/images/profile.png"),
+          //   backgroundColor: Colors.transparent,
+          // )),
+          // _remoteVideo(),
+          _buildGridVideoView(),
           toolbarWidget(),
         ],
       ),
     );
   }
 
+  GridView _buildGridVideoView() {
+    return GridView.builder(
+        shrinkWrap: true,
+        itemCount: _userMap.length,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            childAspectRatio: MediaQuery.of(context).size.height / 1100,
+            crossAxisCount: 2),
+        itemBuilder: (BuildContext context, int index) => Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: (_userMap.entries.elementAt(index).key == _remoteUid)
+                  ? commonAvatar()
+                  : Column(
+                      children: [
+                        _userMap.entries.elementAt(index).value.isSpeaking
+                            ? AvatarGlow(
+                                glowColor: Colors.blue,
+                                endRadius: 90.0,
+                                duration: Duration(milliseconds: 2000),
+                                repeat: true,
+                                showTwoGlows: true,
+                                repeatPauseDuration:
+                                    Duration(milliseconds: 100),
+                                child: Material(
+                                    // Replace this child with your own
+                                    elevation: 8.0,
+                                    shape: CircleBorder(),
+                                    child: commonAvatar()),
+                              )
+                            : commonAvatar(),
+                        Text(_userMap.entries
+                            .elementAt(index)
+                            .value
+                            .uid
+                            .toString()),
+                        Text(_userMap.entries.elementAt(index).key.toString())
+                      ],
+                    ),
+            ));
+  }
+
   // Display remote user's video
   Widget _remoteVideo() {
     // if (_remoteUid != null) {
     // return RtcRemoteView.SurfaceView(uid: _remoteUid!);
-    if (_users.isNotEmpty) {
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: ScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-        ),
-        itemCount: _users.length,
-        itemBuilder: (gc, index) {
-          return Wrap(
-            children: [
-              Container(
-                child: Image.asset(
-                  "assets/images/profile.png",
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    } else {
-      return Text(
-        'No user joined',
-        textAlign: TextAlign.center,
-      );
-    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: ScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+      ),
+      itemCount: _userMap.length,
+      itemBuilder: (gc, index) {
+        return (_userMap.entries.elementAt(index).key == _remoteUid)
+            ? Wrap(
+                spacing: 20.0,
+                runSpacing: 20.0,
+                children: [
+                  Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      _userMap.entries.elementAt(index).value.isSpeaking
+                          ? AvatarGlow(
+                              glowColor: Colors.blue,
+                              endRadius: 90.0,
+                              duration: Duration(milliseconds: 2000),
+                              repeat: true,
+                              showTwoGlows: true,
+                              repeatPauseDuration: Duration(milliseconds: 100),
+                              child: Material(
+                                // Replace this child with your own
+                                elevation: 8.0,
+                                shape: CircleBorder(),
+                                child: CircleAvatar(
+                                  backgroundColor: Colors.grey[100],
+                                  backgroundImage:
+                                      AssetImage("assets/images/profile.png"),
+                                  radius: 40.0,
+                                ),
+                              ),
+                            )
+                          : CircleAvatar(
+                              radius: 30.0,
+                              backgroundImage:
+                                  AssetImage("assets/images/profile.png"),
+                              backgroundColor: Colors.transparent,
+                            ),
+                      Positioned(
+                        bottom: 10.0,
+                        child: CircleAvatar(
+                          radius: 10.0,
+                          child: IconButton(
+                              onPressed: () async {
+                                await _handleMic(Permission.microphone);
+                              },
+                              icon: Icon(
+                                Icons.mic,
+                                color: Colors.black,
+                              )),
+                          backgroundColor: Colors.white,
+                        ),
+                      )
+                    ],
+                  )
+                ],
+              )
+            : Text(
+                'No user joined',
+                textAlign: TextAlign.center,
+              );
+      },
+    );
+    // } else {
+    //   return Text(
+    //     'No user joined',
+    //     textAlign: TextAlign.center,
+    //   );
+    // }
   }
 
 //for mic, call end and camera switch
@@ -194,10 +338,49 @@ class _MyAppState extends State<MyApp> {
       ),
     );
   }
+
   // Display remote user's video
   // Widget _renderLocalPreview() {
   //   return RtcLocalView.SurfaceView();
   // }
+  Widget commonAvatar() {
+    return Stack(
+      children: [
+        CircleAvatar(
+          radius: 40.0,
+          backgroundImage: AssetImage("assets/images/profile.png"),
+          backgroundColor: Colors.transparent,
+        ),
+        Positioned(
+          top: 60.0,
+          child: Container(
+            height: 30.0,
+            child: RawMaterialButton(
+              onPressed: () async {
+                var status = await Permission.microphone.status;
+                if (status.isDenied) {
+                  await [Permission.microphone].request();
+                } else {
+                  onToggleMute();
+                }
+              },
+              child: Center(
+                child: Icon(
+                  muted ? Icons.mic_off : Icons.mic,
+                  color: muted ? Colors.black : Colors.white,
+                  size: 25.0,
+                ),
+              ),
+              shape: CircleBorder(side: BorderSide.none),
+              elevation: 2.0,
+              fillColor: muted ? Colors.white : Color(0xffDC734C),
+              // padding: const EdgeInsets.all(12.0),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   void onCallEnd(BuildContext context) {
     Navigator.pop(context);
