@@ -26,6 +26,7 @@ dependencies:
 
   #Glowing avatar for speaker audio
   avatar_glow: ^2.0.2
+  google_fonts: ^2.2.0
   # #to keep the device awake
   # wakelock: ^0.6.0+1
   # #sound or ringtone which indicates us for the call 

@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:ui';
 import 'package:agora_flutter_quickstart/model/users.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'package:agora_rtc_engine/rtc_engine.dart';
@@ -12,9 +15,9 @@ import 'package:agora_rtc_engine/rtc_engine.dart';
 // import 'package:agora_rtc_engine/rtc_remote_view.dart' as RtcRemoteView;
 
 const appId =
-    "955c5df0b5ad45e5a3fa1edb81962e1d"; //given id is appid which is available in agora dashboard/console
+    "88aca9ae36b64c5fb1f5b27d2f867e20"; //given id is appid which is available in agora dashboard/console
 const token =
-    "006955c5df0b5ad45e5a3fa1edb81962e1dIABazMSO57b0hw8JDeXXvH+3+/xGcwRBcEpMvysmTnsAZZU2fRgAAAAAIgBLPQ3J6r7uYQQAAQDqvu5hAgDqvu5hAwDqvu5hBADqvu5h006955c5df0b5ad45e5a3fa1edb81962e1dIABazMSO57b0hw8JDeXXvH+3+/xGcwRBcEpMvysmTnsAZZU2fRgAAAAAIgBLPQ3J6r7uYQQAAQDqvu5hAgDqvu5hAwDqvu5hBADqvu5h006955c5df0b5ad45e5a3fa1edb81962e1dIABazMSO57b0hw8JDeXXvH+3+/xGcwRBcEpMvysmTnsAZZU2fRgAAAAAIgBLPQ3J6r7uYQQAAQDqvu5hAgDqvu5hAwDqvu5hBADqvu5h006955c5df0b5ad45e5a3fa1edb81962e1dIABazMSO57b0hw8JDeXXvH+3+/xGcwRBcEpMvysmTnsAZZU2fRgAAAAAIgBLPQ3J6r7uYQQAAQDqvu5hAgDqvu5hAwDqvu5hBADqvu5h"; //given id is token  which can be generated  from agora dashboard/console
+    "00688aca9ae36b64c5fb1f5b27d2f867e20IADYqBSpCRJt5ooU4dydR5vIX23A9h7pxnMKmvirnTahIJU2fRgAAAAAEAD45Mp2X5vzYQEAAQBgm/Nh"; //given id is token  which can be generated  from agora dashboard/console
 void main() => runApp(MaterialApp(home: MyApp()));
 
 class MyApp extends StatefulWidget {
@@ -52,7 +55,6 @@ class _MyAppState extends State<MyApp> {
 
     //create the engine
     _engine = await RtcEngine.create(appId);
-    await _engine.setDefaultAudioRoutetoSpeakerphone(true);
     await _engine.enableAudio();
     // Enables the audioVolumeIndication
     await _engine.enableAudioVolumeIndication(250, 3, true);
@@ -64,6 +66,7 @@ class _MyAppState extends State<MyApp> {
           _localUserJoined = true;
           _remoteUid = uid;
 
+          // _engine.setEnableSpeakerphone(true);
           _userMap.addAll({
             uid: User(
               uid,
@@ -136,7 +139,7 @@ class _MyAppState extends State<MyApp> {
         });
       }),
     );
-
+    _engine.setDefaultAudioRoutetoSpeakerphone(true);
     await _engine.joinChannel(token, "audio", null, 0);
   }
 
@@ -181,31 +184,204 @@ class _MyAppState extends State<MyApp> {
         itemBuilder: (BuildContext context, int index) => Padding(
               padding: const EdgeInsets.all(8.0),
               child: (_userMap.entries.elementAt(index).key == _remoteUid)
-                  ? commonAvatar()
+                  ? Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 43.0,
+                          backgroundImage: AssetImage(
+                            "assets/images/profile.png",
+                          ),
+                          backgroundColor: Color(0xff1F1F1F),
+                        ),
+                        Container(
+                          transform: Matrix4.translationValues(0.0, -12.0, 0.0),
+                          height: 35.0,
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: Color(0xff1F1F1F), width: 3.0)),
+                          child: RawMaterialButton(
+                            onPressed: () async {
+                              var status = await Permission.microphone.status;
+                              if (status.isDenied) {
+                                await [Permission.microphone].request();
+                              } else {
+                                onToggleMute();
+                              }
+                            },
+                            child: Center(
+                              child: Icon(
+                                muted ? Icons.mic_off : Icons.mic,
+                                color: muted ? Colors.black : Colors.white,
+                                size: 25.0,
+                              ),
+                            ),
+                            shape: CircleBorder(side: BorderSide.none),
+                            // elevation: 2.0,
+                            fillColor: muted ? Colors.white : Color(0xffDC734C),
+                            // padding: const EdgeInsets.all(12.0),
+                          ),
+                        ),
+                        Text(
+                          'Utsab',
+                          style: GoogleFonts.poppins(
+                              height: 1.57,
+                              fontSize: 14.0,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white),
+                        ),
+                        Text(
+                          'Host',
+                          style: GoogleFonts.poppins(
+                              height: 1.5,
+                              fontSize: 12.0,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white),
+                        ),
+                      ],
+                    )
                   : Column(
                       children: [
                         _userMap.entries.elementAt(index).value.isSpeaking
-                            ? AvatarGlow(
-                                glowColor: Colors.blue,
-                                endRadius: 90.0,
-                                duration: Duration(milliseconds: 2000),
-                                repeat: true,
-                                showTwoGlows: true,
-                                repeatPauseDuration:
-                                    Duration(milliseconds: 100),
-                                child: Material(
-                                    // Replace this child with your own
-                                    elevation: 8.0,
-                                    shape: CircleBorder(),
-                                    child: commonAvatar()),
+                            ? Column(
+                                children: [
+                                  AvatarGlow(
+                                    glowColor: Color(0xff19A1AC),
+                                    endRadius: 50.0,
+                                    duration: Duration(milliseconds: 2000),
+                                    repeat: true,
+                                    showTwoGlows: true,
+                                    repeatPauseDuration:
+                                        Duration(milliseconds: 100),
+                                    child: CircleAvatar(
+                                      radius: 43.0,
+                                      backgroundImage: AssetImage(
+                                        "assets/images/profile.png",
+                                      ),
+                                      backgroundColor: Color(0xff1F1F1F),
+                                    ),
+                                  ),
+                                  Container(
+                                    transform: Matrix4.translationValues(
+                                        0.0, -12.0, 0.0),
+                                    height: 35.0,
+                                    decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Color(0xff1F1F1F),
+                                            width: 3.0)),
+                                    child: RawMaterialButton(
+                                      onPressed: () async {
+                                        var status =
+                                            await Permission.microphone.status;
+                                        if (status.isDenied) {
+                                          await [Permission.microphone]
+                                              .request();
+                                        } else {
+                                          onToggleMute();
+                                        }
+                                      },
+                                      child: Center(
+                                        child: Icon(
+                                          muted ? Icons.mic_off : Icons.mic,
+                                          color: muted
+                                              ? Colors.black
+                                              : Colors.white,
+                                          size: 25.0,
+                                        ),
+                                      ),
+                                      shape:
+                                          CircleBorder(side: BorderSide.none),
+                                      // elevation: 2.0,
+                                      fillColor: muted
+                                          ? Colors.white
+                                          : Color(0xffDC734C),
+                                      // padding: const EdgeInsets.all(12.0),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Utsab',
+                                    style: GoogleFonts.poppins(
+                                        height: 1.57,
+                                        fontSize: 14.0,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white),
+                                  ),
+                                  Text(
+                                    'Host',
+                                    style: GoogleFonts.poppins(
+                                        height: 1.5,
+                                        fontSize: 12.0,
+                                        fontWeight: FontWeight.w400,
+                                        color: Colors.white),
+                                  ),
+                                ],
                               )
-                            : commonAvatar(),
-                        Text(_userMap.entries
-                            .elementAt(index)
-                            .value
-                            .uid
-                            .toString()),
-                        Text(_userMap.entries.elementAt(index).key.toString())
+                            : Column(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 43.0,
+                                    backgroundImage: AssetImage(
+                                      "assets/images/profile.png",
+                                    ),
+                                    backgroundColor: Color(0xff1F1F1F),
+                                  ),
+                                  Container(
+                                    transform: Matrix4.translationValues(
+                                        0.0, -12.0, 0.0),
+                                    height: 35.0,
+                                    decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Color(0xff1F1F1F),
+                                            width: 3.0)),
+                                    child: RawMaterialButton(
+                                      onPressed: () async {
+                                        var status =
+                                            await Permission.microphone.status;
+                                        if (status.isDenied) {
+                                          await [Permission.microphone]
+                                              .request();
+                                        } else {
+                                          onToggleMute();
+                                        }
+                                      },
+                                      child: Center(
+                                        child: Icon(
+                                          muted ? Icons.mic_off : Icons.mic,
+                                          color: muted
+                                              ? Colors.black
+                                              : Colors.white,
+                                          size: 25.0,
+                                        ),
+                                      ),
+                                      shape:
+                                          CircleBorder(side: BorderSide.none),
+                                      // elevation: 2.0,
+                                      fillColor: muted
+                                          ? Colors.white
+                                          : Color(0xffDC734C),
+                                      // padding: const EdgeInsets.all(12.0),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Utsab',
+                                    style: GoogleFonts.poppins(
+                                        height: 1.57,
+                                        fontSize: 14.0,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white),
+                                  ),
+                                  Text(
+                                    'Host',
+                                    style: GoogleFonts.poppins(
+                                        height: 1.5,
+                                        fontSize: 12.0,
+                                        fontWeight: FontWeight.w400,
+                                        color: Colors.white),
+                                  ),
+                                ],
+                              )
                       ],
                     ),
             ));
@@ -234,7 +410,7 @@ class _MyAppState extends State<MyApp> {
                       _userMap.entries.elementAt(index).value.isSpeaking
                           ? AvatarGlow(
                               glowColor: Colors.blue,
-                              endRadius: 90.0,
+                              endRadius: 100.0,
                               duration: Duration(milliseconds: 2000),
                               repeat: true,
                               showTwoGlows: true,
@@ -298,18 +474,18 @@ class _MyAppState extends State<MyApp> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          RawMaterialButton(
-            onPressed: onToggleMute,
-            child: Icon(
-              muted ? Icons.mic_off : Icons.mic,
-              color: muted ? Colors.white : Colors.blueAccent,
-              size: 20.0,
-            ),
-            shape: CircleBorder(),
-            elevation: 2.0,
-            fillColor: muted ? Colors.blueAccent : Colors.white,
-            padding: const EdgeInsets.all(12.0),
-          ),
+          // RawMaterialButton(
+          //   onPressed: onToggleMute,
+          //   child: Icon(
+          //     muted ? Icons.mic_off : Icons.mic,
+          //     color: muted ? Colors.white : Colors.blueAccent,
+          //     size: 20.0,
+          //   ),
+          //   shape: CircleBorder(),
+          //   elevation: 2.0,
+          //   fillColor: muted ? Colors.blueAccent : Colors.white,
+          //   padding: const EdgeInsets.all(12.0),
+          // ),
           RawMaterialButton(
             onPressed: () => onCallEnd(context),
             child: Icon(
@@ -344,39 +520,58 @@ class _MyAppState extends State<MyApp> {
   //   return RtcLocalView.SurfaceView();
   // }
   Widget commonAvatar() {
-    return Stack(
+    return Column(
       children: [
         CircleAvatar(
-          radius: 40.0,
-          backgroundImage: AssetImage("assets/images/profile.png"),
-          backgroundColor: Colors.transparent,
-        ),
-        Positioned(
-          top: 60.0,
-          child: Container(
-            height: 30.0,
-            child: RawMaterialButton(
-              onPressed: () async {
-                var status = await Permission.microphone.status;
-                if (status.isDenied) {
-                  await [Permission.microphone].request();
-                } else {
-                  onToggleMute();
-                }
-              },
-              child: Center(
-                child: Icon(
-                  muted ? Icons.mic_off : Icons.mic,
-                  color: muted ? Colors.black : Colors.white,
-                  size: 25.0,
-                ),
-              ),
-              shape: CircleBorder(side: BorderSide.none),
-              elevation: 2.0,
-              fillColor: muted ? Colors.white : Color(0xffDC734C),
-              // padding: const EdgeInsets.all(12.0),
-            ),
+          radius: 43.0,
+          backgroundImage: AssetImage(
+            "assets/images/profile.png",
           ),
+          backgroundColor: Color(0xff1F1F1F),
+        ),
+        Container(
+          transform: Matrix4.translationValues(0.0, -12.0, 0.0),
+          height: 35.0,
+          decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Color(0xff1F1F1F), width: 3.0)),
+          child: RawMaterialButton(
+            onPressed: () async {
+              var status = await Permission.microphone.status;
+              if (status.isDenied) {
+                await [Permission.microphone].request();
+              } else {
+                onToggleMute();
+              }
+            },
+            child: Center(
+              child: Icon(
+                muted ? Icons.mic_off : Icons.mic,
+                color: muted ? Colors.black : Colors.white,
+                size: 25.0,
+              ),
+            ),
+            shape: CircleBorder(side: BorderSide.none),
+            // elevation: 2.0,
+            fillColor: muted ? Colors.white : Color(0xffDC734C),
+            // padding: const EdgeInsets.all(12.0),
+          ),
+        ),
+        Text(
+          'Utsab',
+          style: GoogleFonts.poppins(
+              height: 1.57,
+              fontSize: 14.0,
+              fontWeight: FontWeight.w600,
+              color: Colors.white),
+        ),
+        Text(
+          'Host',
+          style: GoogleFonts.poppins(
+              height: 1.5,
+              fontSize: 12.0,
+              fontWeight: FontWeight.w400,
+              color: Colors.white),
         ),
       ],
     );
